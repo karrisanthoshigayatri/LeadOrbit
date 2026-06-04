@@ -1008,3 +1008,49 @@ class CampaignWorkflowTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data.get('fallback'))
         self.assertIn('SUBJECT:', response.data.get('generated', ''))
+
+    def test_dashboard_analytics_isolates_data_by_tenant(self):
+        org2 = Organization.objects.create(name='Other Corp')
+        other_user = User.objects.create_user(
+            email='other@othercorp.test',
+            password='StrongPass123!',
+            organization=org2,
+            role='ADMIN',
+        )
+        other_campaign = Campaign.objects.create(
+            organization=org2,
+            name='Other Corp Campaign',
+            status='ACTIVE',
+        )
+        other_lead = Lead.objects.create(
+            organization=org2,
+            email='otherlead@othercorp.test',
+        )
+        CampaignLead.objects.create(
+            organization=org2,
+            campaign=other_campaign,
+            lead=other_lead,
+            status='REPLIED',
+        )
+
+        # Acme user should see zero data (org2's data must not leak)
+        response = self.client.get('/api/v1/analytics/dashboard/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['total_leads'], 0)
+        self.assertEqual(response.data['active_campaigns'], 0)
+        self.assertEqual(response.data['emails_sent'], 0)
+        self.assertEqual(response.data['replied'], 0)
+        self.assertEqual(response.data['campaign_stats'], [])
+
+        # org2 user should only see their own data
+        self.client.force_authenticate(other_user)
+        response = self.client.get('/api/v1/analytics/dashboard/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['total_leads'], 1)
+        self.assertEqual(response.data['active_campaigns'], 1)
+        self.assertEqual(response.data['replied'], 1)
+
+    def test_dashboard_analytics_requires_authentication(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.get('/api/v1/analytics/dashboard/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
