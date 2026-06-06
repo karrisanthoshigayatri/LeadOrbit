@@ -1022,6 +1022,20 @@ class CampaignWorkflowTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_email_webhook_logs_processing_errors(self):
+        with patch('campaigns.views.CampaignLead.objects.filter', side_effect=RuntimeError('boom')):
+            with self.assertLogs('campaigns.views', level='ERROR') as logs:
+                response = self.client.post(
+                    '/api/v1/webhooks/email/',
+                    {'event': 'open', 'email': 'lead@acme.test'},
+                    format='json',
+                )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            any('Webhook processing error for event=open email=lead@acme.test' in entry for entry in logs.output)
+        )
+
     def test_dashboard_analytics_isolates_data_by_tenant(self):
         org2 = Organization.objects.create(name='Other Corp')
         other_user = User.objects.create_user(

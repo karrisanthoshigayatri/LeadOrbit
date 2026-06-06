@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -7,6 +9,8 @@ from leads.models import Lead
 
 from .models import Campaign, CampaignLead, SequenceStep
 from .serializers import CampaignSerializer, SequenceStepSerializer
+
+logger = logging.getLogger(__name__)
 
 class CampaignViewSet(viewsets.ModelViewSet):
     serializer_class = CampaignSerializer
@@ -209,7 +213,12 @@ class WebhookView(APIView):
                         if cl.current_step and cl.current_step.channel_type == 'CONDITION_CLICK':
                             _execute_condition_click_step(cl, cl.current_step, now=now)
             except Exception as e:
-                pass
+                logger.exception(
+                    'Webhook processing error for event=%s email=%s: %s',
+                    event_type,
+                    lead_email,
+                    e,
+                )
                 
         return Response({"status": "received"}, status=status.HTTP_200_OK)
 
