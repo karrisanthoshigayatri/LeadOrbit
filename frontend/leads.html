@@ -164,6 +164,20 @@
 
         let allLeads = [];
 
+        function copyToClipboard(text, button) {
+            navigator.clipboard.writeText(text).then(() => {
+                const icon = button.querySelector('i');
+
+                icon.classList.remove('bi-clipboard');
+                icon.classList.add('bi-check');
+
+                setTimeout(() => {
+                    icon.classList.remove('bi-check');
+                    icon.classList.add('bi-clipboard');
+                }, 2000);
+            });
+        }
+
         function renderLeadRows(leads) {
             const tbody = document.getElementById('leads-table-body');
             if (leads.length === 0) {
@@ -177,7 +191,14 @@
             tbody.innerHTML = leads.map(lead => `
                 <tr>
                     <td class="fw-semibold">${lead.first_name || ''} ${lead.last_name || ''}</td>
-                    <td>${lead.email}</td>
+                    <td>
+                        <span>${lead.email}</span>
+                        <button
+                            class="btn btn-sm btn-outline-secondary copy-email-btn"
+                            data-email="${lead.email}">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </td>
                     <td>${lead.phone || '<span class="text-muted">-</span>'}</td>
                     <td>${lead.company || '<span class="text-muted">-</span>'}</td>
                     <td><span class="chip" style="background:#e0f2fe;color:#0369a1;">${lead.score}</span></td>
@@ -186,6 +207,13 @@
                         : '<span class="chip" style="background:#dcfce7;color:#166534;">Active</span>'}</td>
                 </tr>
             `).join('');
+
+            document.querySelectorAll('.copy-email-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    copyToClipboard(btn.dataset.email, btn);
+                });
+            });
+            
         }
 
         function renderStats(leads) {
