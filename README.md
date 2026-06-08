@@ -18,7 +18,7 @@ This README is based on the current codebase, not the older planning documents i
 - [Testing](#testing)
 - [Current Caveats](#current-caveats)
 - [Integration Notes](#integration-notes)
-- [Contributors](#-contributors)
+- [Contributors](#contributors)
 
 ## What Works Today
 
