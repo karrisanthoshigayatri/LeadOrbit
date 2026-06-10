@@ -3,6 +3,75 @@ import { fetchWithAuth, clearTokens } from './api.js';
 
 const THEME_STORAGE_KEY = 'theme';
 
+function decodeJwt(token) {
+    try {
+        const payload = token.split('.')[1];
+        return JSON.parse(atob(payload));
+    } catch {
+        return null;
+    }
+}
+
+function getTokenExpiryTime() {
+    const token = localStorage.getItem('access_token');
+    if (!token) return null;
+
+    const decoded = decodeJwt(token);
+    if (!decoded?.exp) return null;
+
+    return decoded.exp * 1000;
+}
+
+
+let sessionWarningTimer = null;
+let sessionLogoutTimer = null;
+
+
+function clearSessionTimers() {
+    if (sessionWarningTimer) {
+        clearTimeout(sessionWarningTimer);
+        sessionWarningTimer = null;
+    }
+
+    if (sessionLogoutTimer) {
+        clearTimeout(sessionLogoutTimer);
+        sessionLogoutTimer = null;
+    }
+}
+
+function showSessionTimeoutModal() {
+    console.log("Session timeout modal opened");
+}
+
+function scheduleSessionWarning() {
+    const expiryTime = getTokenExpiryTime();
+
+    if (!expiryTime) return;
+
+    clearSessionTimers();
+
+    const now = Date.now();
+    const warningTime = expiryTime - (2 * 60 * 1000);
+
+    const warningDelay = warningTime - now;
+    const logoutDelay = expiryTime - now;
+
+    console.log('Session warning in:', warningDelay);
+    console.log('Auto logout in:', logoutDelay);
+
+    sessionWarningTimer = setTimeout(() => {
+    showSessionTimeoutModal();
+    }, Math.max(0, warningDelay));
+
+    sessionLogoutTimer = setTimeout(() => {
+    clearSessionTimers();
+    clearTokens();
+    window.location.href = '/login.html';
+    }, Math.max(0, logoutDelay));
+}
+
+
+
 export function getTheme() {
     return localStorage.getItem(THEME_STORAGE_KEY) === 'dark' ? 'dark' : 'light';
 }
@@ -144,6 +213,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 aiPersonalizationToggle.checked = userData.organization.enable_ai_personalization !== false;
             }
         }
+
+        console.log("Scheduling session warning...");
+        scheduleSessionWarning();
 
     } catch (e) {
         console.error('Error loading user profile:', e);
