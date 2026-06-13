@@ -2,11 +2,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-<<<<<<< HEAD
-from leads.models import BlockedDomain, Lead, Tag, LeadTag
-=======
-from leads.models import BlockedDomain, Lead, LeadImportJob
->>>>>>> upstream/main
+from leads.models import BlockedDomain, Lead, Tag, LeadTag, LeadImportJob
 from leads.tasks import import_leads_from_csv
 from tenants.models import Organization
 from users.models import User
@@ -180,7 +176,32 @@ class LeadIsolationAPITests(APITestCase):
         domains = {item['domain'] for item in response.data}
         self.assertEqual(domains, {'orga.test'})
 
-<<<<<<< HEAD
+    def test_import_history_endpoint_is_scoped_and_paginated(self):
+        LeadImportJob.objects.create(
+            organization=self.org_a,
+            filename='orga.csv',
+            total_rows=2,
+            imported_count=1,
+            failed_count=1,
+            error_log=[{'row': 3, 'email': 'bad@example.com', 'error': 'Invalid email format'}],
+        )
+        LeadImportJob.objects.create(
+            organization=self.org_b,
+            filename='orgb.csv',
+            total_rows=1,
+            imported_count=1,
+            failed_count=0,
+            error_log=[],
+        )
+
+        self.client.force_authenticate(self.user_a)
+        response = self.client.get('/api/v1/lead-import-jobs/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('results', response.data)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['filename'], 'orga.csv')
+
 
 # ── New tests for Issue #244 ───────────────────────────────────────────────────
 
@@ -391,30 +412,3 @@ class LeadFilterTests(APITestCase):
         resp = self._get()
         emails = {l['email'] for l in resp.data}
         self.assertNotIn('spy@example.com', emails)
-=======
-    def test_import_history_endpoint_is_scoped_and_paginated(self):
-        LeadImportJob.objects.create(
-            organization=self.org_a,
-            filename='orga.csv',
-            total_rows=2,
-            imported_count=1,
-            failed_count=1,
-            error_log=[{'row': 3, 'email': 'bad@example.com', 'error': 'Invalid email format'}],
-        )
-        LeadImportJob.objects.create(
-            organization=self.org_b,
-            filename='orgb.csv',
-            total_rows=1,
-            imported_count=1,
-            failed_count=0,
-            error_log=[],
-        )
-
-        self.client.force_authenticate(self.user_a)
-        response = self.client.get('/api/v1/lead-import-jobs/')
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('results', response.data)
-        self.assertEqual(response.data['count'], 1)
-        self.assertEqual(response.data['results'][0]['filename'], 'orga.csv')
->>>>>>> upstream/main

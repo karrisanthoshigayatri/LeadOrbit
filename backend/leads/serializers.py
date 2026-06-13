@@ -33,7 +33,6 @@ class LeadSerializer(serializers.ModelSerializer):
         tags = Tag.objects.filter(tagged_leads__lead=obj)
         return TagSerializer(tags, many=True).data
 
-<<<<<<< HEAD
     def _set_tags(self, lead, tag_ids):
         """Replace the lead's tags with the given list of Tag UUIDs."""
         org = lead.organization
@@ -62,7 +61,7 @@ class LeadSerializer(serializers.ModelSerializer):
             self._set_tags(lead, tag_ids)
         return lead
 
-=======
+
 class LeadImportJobSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeadImportJob
@@ -76,7 +75,6 @@ class LeadImportJobSerializer(serializers.ModelSerializer):
             'created_at',
         ]
         read_only_fields = fields
->>>>>>> upstream/main
 
 class BlockedDomainSerializer(serializers.ModelSerializer):
     class Meta:
