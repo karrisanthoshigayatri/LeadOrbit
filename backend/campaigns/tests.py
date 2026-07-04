@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
 
@@ -238,6 +238,8 @@ class CampaignWorkflowTests(APITestCase):
         self.assertEqual(body, 'Can we talk at 10:30 AM?')
 
     def test_process_active_leads_reschedules_email_outside_sending_window(self):
+        now = datetime(2024, 1, 10, 16, 0, tzinfo=dt_timezone.utc)
+
         campaign = Campaign.objects.create(
             organization=self.organization,
             name='Windowed campaign',
@@ -263,14 +265,13 @@ class CampaignWorkflowTests(APITestCase):
             template_body='Body',
         )
         campaign_lead = CampaignLead.objects.create(
+            organization=self.organization,
             campaign=campaign,
             lead=lead,
             current_step=step,
             status='ACTIVE',
-            next_execution_time=timezone.now() - timedelta(minutes=1),
+            next_execution_time=now - timedelta(minutes=1),
         )
-
-        now = datetime(2024, 1, 10, 16, 0, tzinfo=timezone.utc)
         with patch('campaigns.tasks.send_email_step.delay') as delay_mock:
             processed = process_active_leads_once(now=now)
 
@@ -282,6 +283,8 @@ class CampaignWorkflowTests(APITestCase):
     def test_process_active_leads_uses_organization_timezone_when_lead_timezone_is_missing(self):
         self.organization.timezone = 'America/New_York'
         self.organization.save(update_fields=['timezone'])
+
+        now = datetime(2024, 1, 10, 15, 0, tzinfo=dt_timezone.utc)
 
         campaign = Campaign.objects.create(
             organization=self.organization,
@@ -307,14 +310,13 @@ class CampaignWorkflowTests(APITestCase):
             template_body='Body',
         )
         campaign_lead = CampaignLead.objects.create(
+            organization=self.organization,
             campaign=campaign,
             lead=lead,
             current_step=step,
             status='ACTIVE',
-            next_execution_time=timezone.now() - timedelta(minutes=1),
+            next_execution_time=now - timedelta(minutes=1),
         )
-
-        now = datetime(2024, 1, 10, 15, 0, tzinfo=timezone.utc)
         with patch('campaigns.tasks.send_email_step.delay') as delay_mock:
             processed = process_active_leads_once(now=now)
 
@@ -322,6 +324,8 @@ class CampaignWorkflowTests(APITestCase):
         delay_mock.assert_called_once_with(campaign_lead.id, step.id)
 
     def test_process_active_leads_dispatches_email_inside_sending_window(self):
+        now = datetime(2024, 1, 10, 17, 30, tzinfo=dt_timezone.utc)
+
         campaign = Campaign.objects.create(
             organization=self.organization,
             name='Windowed campaign inside',
@@ -347,14 +351,13 @@ class CampaignWorkflowTests(APITestCase):
             template_body='Body',
         )
         campaign_lead = CampaignLead.objects.create(
+            organization=self.organization,
             campaign=campaign,
             lead=lead,
             current_step=step,
             status='ACTIVE',
-            next_execution_time=timezone.now() - timedelta(minutes=1),
+            next_execution_time=now - timedelta(minutes=1),
         )
-
-        now = datetime(2024, 1, 10, 17, 30, tzinfo=timezone.utc)
         with patch('campaigns.tasks.send_email_step.delay') as delay_mock:
             processed = process_active_leads_once(now=now)
 
